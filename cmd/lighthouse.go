@@ -19,6 +19,10 @@ func main() {
 	ble := bluetooth.NewBLEDevice(*device)
 
 	data, _ := ble.RecieveData(device.Address)
-
 	fmt.Println(binary.LittleEndian.Uint32(data[:]))
+
+	bluetooth.SendData(device.Address, []byte("hello world!"))
+	data, _ = ble.RecieveData(device.Address)
+	fmt.Println(string(data[:]))
+
 }

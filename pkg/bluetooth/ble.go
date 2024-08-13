@@ -17,7 +17,7 @@ type Sender interface {
 	New() error
 	GetUUID() uuid.UUID
 	Scan() ([]*BLEDevice, error)
-	Send(to uuid.UUID, msg []byte) error
+	SendData(to bluetooth.Address, msg []byte) error
 	GetAddress() bluetooth.Address
 }
 
@@ -122,7 +122,6 @@ func ScanForDevice(targetAddress string) (*bluetoothDevice, error) {
 
 }
 
-// TODO: change bluetooth address to genral address - non mac address type(uuid.UUID)
 func (ble BLEDevice) RecieveData(from bluetooth.Address) ([]byte, error) {
 	device, err := adapter.Connect(from, bluetooth.ConnectionParams{})
 
@@ -145,7 +144,34 @@ func (ble BLEDevice) RecieveData(from bluetooth.Address) ([]byte, error) {
 	}
 	buf := make([]byte, 23)
 	chars[0].Read(buf)
-	fmt.Println(string(buf))
 	return buf, nil
 
+}
+
+func SendData(to bluetooth.Address, msg []byte) error {
+	device, err := adapter.Connect(to, bluetooth.ConnectionParams{})
+
+	if err != nil {
+		fmt.Println("Failed to connect:", err.Error())
+		return err
+	}
+
+	services, err := device.DiscoverServices([]bluetooth.UUID{})
+	service := services[1]
+
+	if err != nil {
+
+		fmt.Println("Failed to discover services.", err.Error())
+	}
+
+	chars, err := service.DiscoverCharacteristics([]bluetooth.UUID{})
+	if err != nil {
+		fmt.Println("Failed to discover charctristics", err.Error())
+	}
+
+	_, err = chars[0].WriteWithoutResponse(msg)
+	if err != nil {
+		fmt.Errorf("Write error: %v", err)
+	}
+	return nil
 }
