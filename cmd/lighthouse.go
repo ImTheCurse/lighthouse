@@ -1,8 +1,8 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
-
 	"github.com/ImTheCurse/lighthouse/pkg/bluetooth"
 )
 
@@ -16,6 +16,9 @@ func main() {
 		fmt.Errorf("Error: %v", err)
 	}
 
-	fmt.Println(device.LocalName())
+	ble := bluetooth.NewBLEDevice(*device)
 
+	data, _ := ble.RecieveData(device.Address)
+
+	fmt.Println(binary.LittleEndian.Uint32(data[:]))
 }

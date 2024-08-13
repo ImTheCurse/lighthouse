@@ -25,6 +25,7 @@ type Reciever interface {
 	New() error
 	GetUUID() (uuid.UUID, error)
 	GetAddress() bluetooth.Address
+	RecieveData(to bluetooth.Address, msg []byte) ([]byte, error)
 }
 
 type BLEDevice struct {
@@ -45,7 +46,7 @@ func (ble BLEDevice) getNeighbors() []*BLEDevice {
 	return ble.neighbors
 }
 
-func newBLEDevice(device bluetoothDevice) *BLEDevice {
+func NewBLEDevice(device bluetoothDevice) *BLEDevice {
 	return &BLEDevice{uuid.New(), nil, device}
 }
 
@@ -122,12 +123,12 @@ func ScanForDevice(targetAddress string) (*bluetoothDevice, error) {
 }
 
 // TODO: change bluetooth address to genral address - non mac address type(uuid.UUID)
-func (ble BLEDevice) Send(to bluetooth.Address, msg []byte) error {
-	device, err := adapter.Connect(to, bluetooth.ConnectionParams{})
+func (ble BLEDevice) RecieveData(from bluetooth.Address) ([]byte, error) {
+	device, err := adapter.Connect(from, bluetooth.ConnectionParams{})
 
 	if err != nil {
 		fmt.Println("Failed to connect:", err.Error())
-		return err
+		return nil, err
 	}
 
 	services, err := device.DiscoverServices([]bluetooth.UUID{})
@@ -143,10 +144,8 @@ func (ble BLEDevice) Send(to bluetooth.Address, msg []byte) error {
 		fmt.Println("Failed to discover charctristics", err.Error())
 	}
 	buf := make([]byte, 23)
-	for {
-		data, _ := chars[0].Read(buf)
-		fmt.Println(data)
-	}
-	return nil
+	chars[0].Read(buf)
+	fmt.Println(string(buf))
+	return buf, nil
 
 }
