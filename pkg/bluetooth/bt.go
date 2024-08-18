@@ -1,7 +1,8 @@
 package bluetooth
 
 /*
-#cgo CFLAGS: -w
+#cgo CFLAGS: -w -I .
+#cgo LDFLAGS: -L../../lib -lbtferret -Wl,-rpath=./lib
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

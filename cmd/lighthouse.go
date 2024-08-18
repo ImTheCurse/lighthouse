@@ -1,28 +1,29 @@
 package main
 
 import (
-	"encoding/binary"
-	"fmt"
+	//"encoding/binary"
+
 	"github.com/ImTheCurse/lighthouse/pkg/bluetooth"
 )
 
 func main() {
+	bluetooth.InitServer()
+	bluetooth.StartServer()
+	/*
+		device, err := bluetooth.ScanForDevice(mac)
 
-	mac := "48:E7:29:9F:76:8A"
+		if err != nil {
+			fmt.Errorf("Error: %v", err)
+		}
 
-	device, err := bluetooth.ScanForDevice(mac)
+		ble := bluetooth.NewBLEDevice(*device)
 
-	if err != nil {
-		fmt.Errorf("Error: %v", err)
-	}
+		data, _ := ble.RecieveData(device.Address)
+		fmt.Println(binary.LittleEndian.Uint32(data[:]))
 
-	ble := bluetooth.NewBLEDevice(*device)
-
-	data, _ := ble.RecieveData(device.Address)
-	fmt.Println(binary.LittleEndian.Uint32(data[:]))
-
-	bluetooth.SendData(device.Address, []byte("hello world!"))
-	data, _ = ble.RecieveData(device.Address)
-	fmt.Println(string(data[:]))
+		bluetooth.SendData(device.Address, []byte("hello world!"))
+		data, _ = ble.RecieveData(device.Address)
+		fmt.Println(string(data[:]))
+	*/
 
 }
