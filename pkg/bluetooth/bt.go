@@ -1,82 +1,47 @@
 package bluetooth
 
+/*
+#cgo CFLAGS: -w
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "btlib.h"
+#include "util.h"
+
+
+*/
+import "C"
 import (
 	"fmt"
+	"unsafe"
+
 	"github.com/google/uuid"
-	"golang.org/x/sys/unix"
-	"strconv"
-	"strings"
-	"syscall"
 )
 
 type BTDevice struct {
 	id  uuid.UUID
 	buf []byte
-	sd  int
 }
 
-// TODO: add windows support.
-func NewBTDevice() (*BTDevice, error) {
-	sd, err := unix.Socket(syscall.AF_BLUETOOTH, syscall.SOCK_STREAM, unix.BTPROTO_RFCOMM)
-	if err != nil {
-		fmt.Errorf("Unable to create Socket. Error: %v", err)
-		return nil, err
-	}
-	device := &BTDevice{uuid.New(), make([]byte, 1024), sd}
-
-	return device, nil
+func (device *BTDevice) GetBuffer() []byte {
+	return device.buf
 }
 
-func (device *BTDevice) Bind(localMacAddress string) {
-	unix.Bind(device.sd, &unix.SockaddrRFCOMM{
-		Channel: 1,
-		Addr:    str2ba(localMacAddress),
-	})
-}
-
-func (device *BTDevice) Listen() error {
-	err := unix.Listen(device.sd, 1)
-	if err != nil {
-		fmt.Errorf("Failed to listen to socket. Error: %v", err)
-		return err
+func InitServer() error {
+	file := C.CString("devices.txt")
+	if C.init_blue(file) == 0 {
+		return fmt.Errorf("Error: Unable to initalize classic bluetooth server.")
 	}
 	return nil
 }
 
-func (device *BTDevice) Accept() {
-	nfd, sa, _ := unix.Accept(device.sd)
-	fmt.Printf("conn addr=%v fd=%d", sa.(*unix.SockaddrRFCOMM).Addr, nfd)
-	unix.Read(nfd, device.buf)
-}
+func StartServer() {
 
-func (device *BTDevice) Connect(to string) error {
-	err := unix.Connect(device.sd, &unix.SockaddrRFCOMM{
-		Channel: 1,
-		Addr:    str2ba(to),
-	})
-	if err != nil {
-		fmt.Errorf("Failed to connect to Address: %v Error: %v", to, err)
-		return err
-	}
-	return nil
-}
+	//for more information on availeable flags, reference: https://github.com/petzval/btferret?tab=readme-ov-file#4-2-2-classic_server
+	C.classic_server(C.ANY_DEVICE, (*[0]byte)(C.handleConnection), 10, C.serverKeyflag)
+	dataPtr := unsafe.Pointer(C.serverDataBuffer)
+	data := C.GoString((*C.char)(dataPtr))
+	fmt.Printf("Data from golang!: %v", data)
+	C.close_all()
 
-func (device *BTDevice) Send(data []byte) error {
-	_, err := unix.Write(device.sd, data)
-	if err != nil {
-		fmt.Errorf("Failed to send data, Error: %v", err)
-		return err
-	}
-	return nil
-}
-
-// str2ba converts MAC address string representation to little-endian byte array
-func str2ba(addr string) [6]byte {
-	a := strings.Split(addr, ":")
-	var b [6]byte
-	for i, tmp := range a {
-		u, _ := strconv.ParseUint(tmp, 16, 8)
-		b[len(b)-1-i] = byte(u)
-	}
-	return b
 }
