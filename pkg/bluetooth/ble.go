@@ -34,22 +34,27 @@ type BLEDevice struct {
 	device    bluetoothDevice
 }
 
+// Get device mesh network id.
 func (ble BLEDevice) GetUUID() uuid.UUID {
 	return ble.id
 }
 
+// Get local device MAC address.
 func (ble BLEDevice) GetAddress() bluetooth.Address {
 	return ble.device.Address
 }
 
+// Get all previously scanned neighbors.
 func (ble BLEDevice) getNeighbors() []*BLEDevice {
 	return ble.neighbors
 }
 
+// Construct new BLEDevice.
 func NewBLEDevice(device bluetoothDevice) *BLEDevice {
 	return &BLEDevice{uuid.New(), nil, device}
 }
 
+// Scan for all of the devices in the physical area.
 func Scan() ([]bluetoothDevice, error) {
 	err := adapter.Enable()
 	if err != nil {
@@ -84,6 +89,7 @@ func Scan() ([]bluetoothDevice, error) {
 	return deviceSet.Items(), nil
 }
 
+// Scan for a specific device in the physical area.
 func ScanForDevice(targetAddress string) (*bluetoothDevice, error) {
 	err := adapter.Enable()
 	if err != nil {
@@ -122,6 +128,12 @@ func ScanForDevice(targetAddress string) (*bluetoothDevice, error) {
 
 }
 
+// Get device default charctristic buffer
+func (ble BLEDevice) GetDeviceBuffer() ([]byte, error) {
+	return ble.RecieveData(ble.device.Address)
+}
+
+// Read data from a given target ble device using its mac address.
 func (ble BLEDevice) RecieveData(from bluetooth.Address) ([]byte, error) {
 	device, err := adapter.Connect(from, bluetooth.ConnectionParams{})
 
@@ -142,12 +154,13 @@ func (ble BLEDevice) RecieveData(from bluetooth.Address) ([]byte, error) {
 	if err != nil {
 		fmt.Println("Failed to discover charctristics", err.Error())
 	}
-	buf := make([]byte, 23)
+	buf := make([]byte, 64)
 	chars[0].Read(buf)
 	return buf, nil
 
 }
 
+// Write data to target ble device. Write directly to device, with no data format.
 func SendData(to bluetooth.Address, msg []byte) error {
 	device, err := adapter.Connect(to, bluetooth.ConnectionParams{})
 

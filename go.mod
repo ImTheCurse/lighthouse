@@ -6,7 +6,6 @@ require (
 	github.com/amit7itz/goset v1.2.1
 	github.com/cilium/cilium v1.16.1
 	github.com/google/uuid v1.6.0
-	golang.org/x/sys v0.24.0
 	tinygo.org/x/bluetooth v0.10.0
 )
 
@@ -22,4 +21,5 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20240524165444-4d4ba1473f21 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
+	golang.org/x/sys v0.24.0 // indirect
 )
