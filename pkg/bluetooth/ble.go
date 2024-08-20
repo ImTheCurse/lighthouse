@@ -10,7 +10,6 @@ import (
 )
 
 var adapter = bluetooth.DefaultAdapter
-var markedDevices = make(map[bluetooth.Address]bool)
 
 type bluetoothDevice = bluetooth.ScanResult
 type Sender interface {
@@ -30,7 +29,7 @@ type Reciever interface {
 
 type BLEDevice struct {
 	id        uuid.UUID
-	neighbors []*BLEDevice
+	neighbors []bluetoothDevice
 	device    bluetoothDevice
 }
 
@@ -45,13 +44,17 @@ func (ble BLEDevice) GetAddress() bluetooth.Address {
 }
 
 // Get all previously scanned neighbors.
-func (ble BLEDevice) getNeighbors() []*BLEDevice {
+func (ble BLEDevice) GetNeighbors() []bluetoothDevice {
 	return ble.neighbors
 }
 
 // Construct new BLEDevice.
-func NewBLEDevice(device bluetoothDevice) *BLEDevice {
-	return &BLEDevice{uuid.New(), nil, device}
+func NewBLEDevice(device bluetoothDevice) (*BLEDevice, error) {
+	nei, err := Scan()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create BLE device. Error: %v", err)
+	}
+	return &BLEDevice{uuid.New(), nei, device}, nil
 }
 
 // Scan for all of the devices in the physical area.
@@ -61,12 +64,12 @@ func Scan() ([]bluetoothDevice, error) {
 		fmt.Println("Failed to enable BLE stack:" + err.Error())
 	}
 
-	BLEdevicesSet := goset.NewSet[*BLEDevice]()
 	deviceSet := goset.NewSet[bluetoothDevice]()
 
 	fmt.Println("Scanning...")
 	handleScan := func(adapter *bluetooth.Adapter, device bluetooth.ScanResult) {
 		go func() {
+			// FIX: hardcoded to 5 seconds for debugging purposes, to be removed.
 			time.Sleep(5 * time.Second)
 			err := adapter.StopScan()
 			if err != nil {
@@ -74,10 +77,6 @@ func Scan() ([]bluetoothDevice, error) {
 			}
 		}()
 		fmt.Println("Found device:", device.Address.String(), device.RSSI, device.LocalName())
-
-		// TODO: add node traversal from current device to next device recursively
-		newDevice := &BLEDevice{uuid.New(), nil, device}
-		BLEdevicesSet.Add(newDevice)
 		deviceSet.Add(device)
 
 	}
@@ -101,6 +100,7 @@ func ScanForDevice(targetAddress string) (*bluetoothDevice, error) {
 
 	handleScan := func(adapter *bluetooth.Adapter, device bluetooth.ScanResult) {
 		go func() {
+			// FIX: hardcoded to 5 seconds for debugging purposes, to be removed.
 			time.Sleep(5 * time.Second)
 			err := adapter.StopScan()
 			if err != nil {
