@@ -57,6 +57,14 @@ func NewBLEDevice(device bluetoothDevice) (*BLEDevice, error) {
 	return &BLEDevice{uuid.New(), nei, device}, nil
 }
 
+func (ble BLEDevice) WriteDataToLocalBuffer(data []byte) error {
+	err := SendData(ble.device.Address, data)
+	if err != nil {
+		return fmt.Errorf("Error from WriteDataToLocalBuffer: %v", err)
+	}
+	return nil
+}
+
 // Scan for all of the devices in the physical area.
 func Scan() ([]bluetoothDevice, error) {
 	err := adapter.Enable()
@@ -136,7 +144,7 @@ func (ble BLEDevice) GetDeviceBuffer() ([]byte, error) {
 // Read data from a given target ble device using its mac address.
 func (ble BLEDevice) RecieveData(from bluetooth.Address) ([]byte, error) {
 	device, err := adapter.Connect(from, bluetooth.ConnectionParams{})
-
+	//defer device.Disconnect()
 	if err != nil {
 		fmt.Println("Failed to connect:", err.Error())
 		return nil, err
@@ -163,7 +171,7 @@ func (ble BLEDevice) RecieveData(from bluetooth.Address) ([]byte, error) {
 // Write data to target ble device. Write directly to device, with no data format.
 func SendData(to bluetooth.Address, msg []byte) error {
 	device, err := adapter.Connect(to, bluetooth.ConnectionParams{})
-
+	//	defer device.Disconnect()
 	if err != nil {
 		fmt.Println("Failed to connect:", err.Error())
 		return err

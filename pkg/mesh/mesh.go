@@ -15,7 +15,7 @@ type meshBLE struct {
 	ble.BLEDevice
 }
 
-const HEADER_SIZE = 28
+const HEADER_SIZE = 20
 const (
 	NOTIFY opcode = iota
 	TRAVERSE
@@ -39,12 +39,13 @@ func NewMeshBLE(device bluetoothDevice) (*meshBLE, error) {
 
 // Format buffer data in device to the format:
 //
-//	|  OPCODE  |  LOCK  |  TARGET ADDRESS  | LOCAL ADDRESS |  DATA   |
-//	   2 byte    2 byte       8 byte            8 bytes     492 bytes
+//	|  OPCODE  |  LOCK  |  TARGET ADDRESS  | BYTE PADDING |  LOCAL ADDRESS | BYTE PADDING |   DATA   |
+//	   2 byte    2 byte       6 byte	    2 byte          6 bytes        2 byte        44 byte
 //
 // NOTE: TARGET ADDRESS and LOCAL ADDRESS are in little endian byte order, as defined in reference: https://pkg.go.dev/github.com/cilium/cilium@v1.16.1/pkg/mac#MAC.Uint64
-// NOTE: data is sent from device's buffer.
-func (device *meshBLE) formatData(code opcode, lockStatus lock, localAddress mac.Uint64MAC, targetAddress mac.Uint64MAC) error {
+// NOTE: data is sent from device's buffer, and data is in little endian byte order as defined in reference: https://www.bluetooth.org/DocMan/handlers/DownloadDoc.ashx?doc_id=587177
+// NOTE: as defined in vol.3 chapter G, part 2.4 bluetooth core specification.
+func (device *meshBLE) FormatData(code opcode, lockStatus lock, localAddress mac.Uint64MAC, targetAddress mac.Uint64MAC) error {
 	buf, err := device.GetDeviceBuffer()
 	if err != nil {
 		return fmt.Errorf("Unable to format data, Error: %v", err)
@@ -60,12 +61,19 @@ func (device *meshBLE) formatData(code opcode, lockStatus lock, localAddress mac
 	if n != 20 {
 		return fmt.Errorf("Error: Header wasen't copied to data.")
 	}
+	address := device.GetAddress()
+	data, err := device.RecieveData(address)
+	if err != nil {
+		return fmt.Errorf("Unable to format data: %v", err)
+	}
+	n = copy(buf[20:], data)
+	device.WriteDataToLocalBuffer(buf)
 	return nil
 }
 
 // TODO: initialize ble device with a handler for each opcode.
-func (device *meshBLE) sendFormattedData(localAddress mac.Uint64MAC, targetAddress mac.Uint64MAC) error {
-	err := device.formatData(SEND, UNLOCKED, localAddress, targetAddress)
+func (device *meshBLE) SendFormattedData(localAddress mac.Uint64MAC, targetAddress mac.Uint64MAC) error {
+	err := device.FormatData(SEND, UNLOCKED, localAddress, targetAddress)
 	if err != nil {
 		return err
 	}
