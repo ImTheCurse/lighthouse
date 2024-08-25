@@ -3,6 +3,7 @@ package mesh
 import (
 	"encoding/binary"
 	"fmt"
+
 	ble "github.com/ImTheCurse/lighthouse/pkg/bluetooth"
 	"github.com/cilium/cilium/pkg/mac"
 	"tinygo.org/x/bluetooth"
@@ -17,7 +18,7 @@ type meshBLE struct {
 
 const HEADER_SIZE = 20
 const (
-	NOTIFY opcode = iota
+	NOTIFY opcode = iota + 1
 	TRAVERSE
 	SEND
 	RECV
@@ -25,7 +26,7 @@ const (
 	ERROR
 )
 const (
-	UNLOCKED lock = iota
+	UNLOCKED lock = iota + 1
 	LOCKED
 )
 
@@ -48,6 +49,16 @@ func NewMeshBLE(device bluetoothDevice) (*meshBLE, error) {
 func (device *meshBLE) FormatData(code opcode, lockStatus lock, localAddress mac.Uint64MAC, targetAddress mac.Uint64MAC) error {
 	buf, err := device.GetDeviceBuffer()
 	if err != nil {
+		return fmt.Errorf("Unable to read buffer, Error: %v", buf)
+	}
+	if err != nil {
+		return fmt.Errorf("Unable to decode buffer. Error: %v", err)
+	}
+
+	// FIX: Hardcoded local device address, need to parse target address and pass it to sendData.
+	address := device.GetAddress()
+	data, err := device.RecieveData(address)
+	if err != nil {
 		return fmt.Errorf("Unable to format data, Error: %v", err)
 	}
 	header := make([]byte, HEADER_SIZE)
@@ -57,23 +68,30 @@ func (device *meshBLE) FormatData(code opcode, lockStatus lock, localAddress mac
 	binary.LittleEndian.PutUint64(header[12:20], uint64(localAddress))
 
 	// NOTE: We assume that there wasn't unformatted data before hand, as we initialize the BLE devices with formatted data.
-	n := copy(buf[:20], header)
+	n := copy(buf[0:20], header)
 	if n != 20 {
 		return fmt.Errorf("Error: Header wasen't copied to data.")
 	}
-	address := device.GetAddress()
-	data, err := device.RecieveData(address)
+	data = data[20:]
 	if err != nil {
 		return fmt.Errorf("Unable to format data: %v", err)
 	}
 	n = copy(buf[20:], data)
-	device.WriteDataToLocalBuffer(buf)
+	fmt.Println()
+	fmt.Printf("Buffer length: %v", len(buf))
+	fmt.Println()
+	fmt.Printf("Data Length: %v", len(data))
+	fmt.Printf("\nData: %x", data)
+	fmt.Printf("\nBuf: %x", buf)
+	ble.SendData(address, buf)
 	return nil
 }
 
 // TODO: initialize ble device with a handler for each opcode.
 func (device *meshBLE) SendFormattedData(localAddress mac.Uint64MAC, targetAddress mac.Uint64MAC) error {
 	err := device.FormatData(SEND, UNLOCKED, localAddress, targetAddress)
+	buf, _ := device.GetDeviceBuffer()
+	fmt.Printf("From SendFormat: %x", buf)
 	if err != nil {
 		return err
 	}
